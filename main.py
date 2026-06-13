@@ -1,8 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from models import Product
 
-
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Allows your React app to connect
+    allow_credentials=True,
+    allow_methods=["*"],                      # Allows GET, POST, PUT, DELETE
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def greet():
@@ -26,10 +34,28 @@ def get_product_by_id(product_id: int):
     for product in products:
         if product.id == product_id:
             return product
-    return {"error": "Product not found"}
+    raise HTTPException(status_code=404, detail="Product not found")
 
 @app.post("/products/")
 def create_product(product: Product):
+    if any(existing.id == product.id for existing in products):
+        raise HTTPException(status_code=400, detail="Product with this ID already exists")
     products.append(product)
     return {"message": "Product created successfully", "product": product}
+
+@app.put("/products/{product_id}")
+def update_product(product_id: int, updated_product: Product):
+    for index, product in enumerate(products):
+        if product.id == product_id:
+            products[index] = updated_product
+            return {"message": "Product updated successfully", "product": updated_product}
+    raise HTTPException(status_code=404, detail="Product not found")
+
+@app.delete("/products/{product_id}")
+def delete_product(product_id: int):
+    for index, product in enumerate(products):
+        if product.id == product_id:
+            deleted = products.pop(index)
+            return {"message": "Product deleted successfully", "product": deleted}
+    raise HTTPException(status_code=404, detail="Product not found")
     
